@@ -3,26 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plan-Do-See 다이어리 (Supabase DB 연동형)</title>
+  <title>Plan-Do-See 다이어리</title>
   <!-- React & Babel CDN -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background-color: #f8fafc; color: #1a202c; }
-    .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .warning-banner { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 14px; border-radius: 6px; font-weight: bold; margin-bottom: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
-    .card { padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; text-align: center; cursor: pointer; transition: all 0.2s; }
-    .card:hover { border-color: #3182ce; background-color: #ebf8ff; }
-    .btn { padding: 8px 14px; background-color: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; background-color: #f8fafc; color: #1a202c; margin: 0; }
+    .container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 28px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    
+    .warning-banner { background-color: #fffbe6; color: #856404; border: 1px solid #ffeba8; padding: 14px; border-radius: 8px; font-weight: bold; margin-bottom: 24px; font-size: 0.95rem; }
+    
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    .card { padding: 14px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .card:hover { border-color: #3182ce; background-color: #ebf8ff; transform: translateY(-2px); }
+    
+    .btn { padding: 9px 16px; background-color: #3182ce; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: background-color 0.2s; }
     .btn:hover { background-color: #2b6cb0; }
-    .btn-submit { background-color: #38a169; }
-    .btn-submit:hover { background-color: #2f855a; }
-    .form-box { background: #f7fafc; padding: 16px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
-    .form-group { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-    .form-group input, .form-group select { padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px; }
-    .todo-item { border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; margin-bottom: 8px; background: #fff; }
+    
+    /* 새 할 일 추가 버튼 전용 스타일 */
+    .btn-submit { background-color: #28a745; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; font-size: 0.95rem; font-weight: bold; border-radius: 6px; }
+    .btn-submit:hover { background-color: #218838; }
+    
+    .form-box { background: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 28px; }
+    .form-group { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .form-group input, .form-group select { padding: 9px 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.9rem; outline: none; }
+    .form-group input:focus, .form-group select:focus { border-color: #3182ce; box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15); }
+
+    .todo-item { border: 1px solid #e2e8f0; padding: 14px; border-radius: 8px; margin-bottom: 10px; background: #fff; transition: box-shadow 0.2s; }
+    .todo-item:hover { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
     .completed { text-decoration: line-through; color: #a0aec0; }
   </style>
 </head>
@@ -44,7 +54,7 @@
       total_estimated_hours: 0, total_actual_hours: 0, time_difference: 0
     });
 
-    // 신규 입력 폼 상태
+    // 신규 할 일 입력 폼 상태
     const [newContent, setNewContent] = React.useState('');
     const [newDueDate, setNewDueDate] = React.useState('');
     const [newPriority, setNewPriority] = React.useState('MEDIUM');
@@ -62,14 +72,18 @@
         });
 
         const resTodos = await fetch(`${API_BASE}/todos?${params}`);
-        const dataTodos = await resTodos.json();
-        setTodos(dataTodos);
+        if (resTodos.ok) {
+          const dataTodos = await resTodos.json();
+          setTodos(dataTodos);
+        }
 
         const resSummary = await fetch(`${API_BASE}/plans/1/review-summary`);
-        const dataSummary = await resSummary.json();
-        setSummary(dataSummary);
+        if (resSummary.ok) {
+          const dataSummary = await resSummary.json();
+          setSummary(dataSummary);
+        }
       } catch (err) {
-        console.error("서버 DB 통신 오류:", err);
+        console.error("서버 통신 오류:", err);
       }
     };
 
@@ -77,7 +91,7 @@
       loadData();
     }, [search, statusFilter, filterType, sortBy]);
 
-    // 할 일 신규 생성 함수
+    // 새 할 일 추가 요청
     const handleAddTodo = async (e) => {
       e.preventDefault();
       if (!newContent.trim()) {
@@ -106,16 +120,19 @@
           setNewHours(1);
           loadData();
         } else {
-          alert('등록에 실패했습니다.');
+          const errData = await response.json();
+          alert(`등록 실패: ${errData.error || '오류가 발생했습니다.'}`);
         }
       } catch (err) {
-        alert('서버 통신 오류가 발생했습니다.');
+        alert('서버와 통신할 수 없습니다.');
       }
     };
 
-    // 할 일 완료 처리 함수
+    // 완료 처리
     const handleComplete = async (id) => {
       const actual = prompt('실제 소요 시간을 입력하세요 (시간 단위):', '1');
+      if (actual === null) return;
+
       const obstacle = prompt('막혔던 이유나 장애 요인이 있다면 입력하세요 (없으면 확인):', '');
 
       try {
@@ -133,7 +150,7 @@
       }
     };
 
-    // 전체 JSON 내보내기 다운로드
+    // JSON 내보내기
     const handleExport = () => {
       window.open(`${API_BASE}/export`, '_blank');
     };
@@ -141,23 +158,23 @@
     return (
       <div className="container">
         <div className="warning-banner">
-          지금은 로그인이 없어 링크를 아는 사람은 누구나 볼 수 있습니다. 남이 봐도 괜찮은 내용만 넣으세요
+          ⚠️ 로그인 기능이 제공되지 않으므로, 누구나 이 페이지의 내용을 볼 수 있습니다. 보안이 필요하거나 개인적인 민감한 정보는 입력하지 마세요.
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2>📌 Plan-Do-See 다이어리 (Supabase DB 연동형)</h2>
+          <h2>📌 Plan-Do-See 다이어리</h2>
           <button className="btn" onClick={handleExport}>📥 전체 데이터 내보내기 (JSON)</button>
         </div>
 
-        {/* 1. SEE 집계 현황 */}
-        <section style={{ marginBottom: '24px', padding: '16px', background: '#edf2f7', borderRadius: '8px' }}>
-          <h3>📊 돌아보기 (See) 요약</h3>
+        {/* 1. SEE 요약 */}
+        <section style={{ marginBottom: '24px', padding: '16px', background: '#edf2f7', borderRadius: '10px' }}>
+          <h3 style={{ marginTop: 0 }}>📊 돌아보기 (See) 요약</h3>
           <div className="grid">
             <div className="card" onClick={() => { setFilterType('ALL'); setStatusFilter('ALL'); }}>
               전체 할 일<br/><strong style={{ fontSize: '1.3rem' }}>{summary.total_plans}</strong>개
             </div>
             <div className="card" onClick={() => { setFilterType('ALL'); setStatusFilter('COMPLETED'); }}>
-              완료 수<br/><strong style={{ fontSize: '1.3rem', color: 'green' }}>{summary.completed_count}</strong>개
+              완료 수<br/><strong style={{ fontSize: '1.3rem', color: '#28a745' }}>{summary.completed_count}</strong>개
             </div>
             <div className="card" onClick={() => { setFilterType('DELAYED'); setStatusFilter('ALL'); }}>
               지연 수<br/><strong style={{ fontSize: '1.3rem', color: '#e53e3e' }}>{summary.delayed_count}</strong>개
@@ -166,9 +183,9 @@
               막힘 수<br/><strong style={{ fontSize: '1.3rem', color: '#dd6b20' }}>{summary.blocked_count}</strong>개
             </div>
           </div>
-          <div style={{ background: '#fff', padding: '10px 14px', borderRadius: '4px', fontSize: '0.9rem' }}>
-            <span><strong>예상시간:</strong> {summary.total_estimated_hours}시간 | </span>
-            <span><strong>실제시간:</strong> {summary.total_actual_hours}시간 | </span>
+          <div style={{ background: '#fff', padding: '12px 16px', borderRadius: '6px', fontSize: '0.9rem', display: 'flex', gap: '16px' }}>
+            <span><strong>예상시간:</strong> {summary.total_estimated_hours}시간</span>
+            <span><strong>실제시간:</strong> {summary.total_actual_hours}시간</span>
             <span>
               <strong>시간 차이:</strong>{' '}
               <strong style={{ color: summary.time_difference > 0 ? '#e53e3e' : '#3182ce' }}>
@@ -178,9 +195,9 @@
           </div>
         </section>
 
-        {/* 2. 신규 할 일 입력 폼 */}
+        {/* 2. 새 할 일 추가 영역 */}
         <section className="form-box">
-          <h3>➕ 새 할 일 추가 (Supabase DB 즉시 저장)</h3>
+          <h3 style={{ marginTop: 0, marginBottom: '14px' }}>➕ 새 할 일 추가</h3>
           <form onSubmit={handleAddTodo}>
             <div className="form-group">
               <input 
@@ -188,7 +205,7 @@
                 placeholder="할 일 내용을 입력하세요..." 
                 value={newContent} 
                 onChange={e => setNewContent(e.target.value)} 
-                style={{ flex: 2, minWidth: '200px' }}
+                style={{ flex: 3, minWidth: '220px' }}
                 required
               />
               <input 
@@ -197,9 +214,9 @@
                 onChange={e => setNewDueDate(e.target.value)} 
               />
               <select value={newPriority} onChange={e => setNewPriority(e.target.value)}>
-                <option value="HIGH">높음</option>
-                <option value="MEDIUM">보통</option>
-                <option value="LOW">낮음</option>
+                <option value="HIGH">우선순위: 높음</option>
+                <option value="MEDIUM">우선순위: 보통</option>
+                <option value="LOW">우선순위: 낮음</option>
               </select>
             </div>
             <div className="form-group">
@@ -215,40 +232,43 @@
                 placeholder="예상시간(h)" 
                 value={newHours} 
                 onChange={e => setNewHours(e.target.value)} 
-                style={{ width: '100px' }}
+                style={{ width: '120px' }}
                 min="0"
               />
-              <button type="submit" className="btn btn-submit">➕ 할 일 추가</button>
+              <!-- 추가 버튼 -->
+              <button type="submit" className="btn btn-submit">
+                <span>➕</span> 새 할 일 추가
+              </button>
             </div>
           </form>
         </section>
 
-        {/* 3. DO 목록 현황 */}
+        {/* 3. 할 일 목록 */}
         <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <h3>📝 할 일 (Do) 목록</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h3 style={{ margin: 0 }}>📝 할 일 (Do) 목록</h3>
             {filterType !== 'ALL' && (
               <span style={{ fontSize: '0.85rem', color: '#e53e3e', fontWeight: 'bold' }}>
                 현재 [{filterType === 'DELAYED' ? '지연된 항목' : '막혔던 항목'}] 필터링 중
-                <button onClick={() => setFilterType('ALL')} style={{ marginLeft: '6px', cursor: 'pointer' }}>필터 해제</button>
+                <button onClick={() => setFilterType('ALL')} style={{ marginLeft: '6px', cursor: 'pointer', border: '1px solid #cbd5e0', background: '#fff', borderRadius: '4px', padding: '2px 6px' }}>필터 해제</button>
               </span>
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
             <input 
               type="text" 
               placeholder="내용/태그 검색..." 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              style={{ flex: 1, padding: '8px' }}
+              style={{ flex: 1, padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: '6px' }}
             />
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '8px' }}>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: '6px' }}>
               <option value="ALL">전체 상태</option>
               <option value="IN_PROGRESS">진행중</option>
               <option value="COMPLETED">완료됨</option>
             </select>
-            <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ padding: '8px' }}>
+            <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ padding: '9px 12px', border: '1px solid #cbd5e0', borderRadius: '6px' }}>
               <option value="due_date">마감일순</option>
               <option value="priority">우선순위순</option>
               <option value="estimated_hours">예상시간순</option>
@@ -256,39 +276,45 @@
           </div>
 
           <div>
-            {todos.map(todo => (
-              <div key={todo.id} className="todo-item">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className={todo.status === 'COMPLETED' ? 'completed' : ''} style={{ fontWeight: 'bold' }}>
-                    [ID:{todo.id}] {todo.content}
-                  </span>
-                  <div>
-                    {todo.status !== 'COMPLETED' && (
-                      <button 
-                        onClick={() => handleComplete(todo.id)} 
-                        style={{ padding: '4px 8px', fontSize: '0.8rem', cursor: 'pointer', background: '#e2e8f0', border: 'none', borderRadius: '4px' }}
-                      >
-                        완료 처리
-                      </button>
-                    )}
-                    <span style={{ marginLeft: '8px', fontSize: '0.85rem', color: todo.status === 'COMPLETED' ? 'green' : '#dd6b20' }}>
-                      {todo.status === 'COMPLETED' ? '✅ 완료' : '⏳ 진행중'}
+            {todos.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px', color: '#a0aec0' }}>등록된 할 일이 없습니다.</div>
+            ) : (
+              todos.map(todo => (
+                <div key={todo.id} className="todo-item">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className={todo.status === 'COMPLETED' ? 'completed' : ''} style={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                      [ID:{todo.id}] {todo.content}
                     </span>
+                    <div>
+                      {todo.status !== 'COMPLETED' && (
+                        <button 
+                          onClick={() => handleComplete(todo.id)} 
+                          style={{ padding: '5px 10px', fontSize: '0.8rem', cursor: 'pointer', background: '#edf2f7', border: '1px solid #cbd5e0', borderRadius: '4px', fontWeight: 'bold' }}
+                        >
+                          완료 처리
+                        </button>
+                      )}
+                      <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: todo.status === 'COMPLETED' ? '#28a745' : '#dd6b20', fontWeight: 'bold' }}>
+                        {todo.status === 'COMPLETED' ? '✅ 완료' : '⏳ 진행중'}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <div style={{ fontSize: '0.8rem', color: '#718096', marginTop: '6px' }}>
-                  📅 마감일: {todo.due_date ? todo.due_date.split('T')[0] : '미정'} | 🏷️ 태그: {todo.tags} | ⏳ 예상: {todo.estimated_hours}h
-                  {todo.actual_hours > 0 && <span> | ⏱️ 실제: {todo.actual_hours}h</span>}
-                </div>
-
-                {todo.obstacle_reason && (
-                  <div style={{ color: '#c53030', background: '#fff5f5', padding: '6px', borderRadius: '4px', marginTop: '6px', fontSize: '0.85rem' }}>
-                    🚨 막혔던 이유: {todo.obstacle_reason}
+                  <div style={{ fontSize: '0.85rem', color: '#718096', marginTop: '8px' }}>
+                    📅 마감일: {todo.due_date ? todo.due_date.split('T')[0] : '미정'} | 🏷️ 태그: {todo.tags || '없음'} | ⏳ 예상: {todo.estimated_hours}h
+                    {todo.actual_hours > 0 && (
+                      <span> | ⏱️ 실제: {todo.actual_hours}h</span>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {todo.obstacle_reason && (
+                    <div style={{ color: '#c53030', background: '#fff5f5', border: '1px solid #fed7d7', padding: '8px 12px', borderRadius: '6px', marginTop: '8px', fontSize: '0.85rem' }}>
+                      🚨 막혔던 이유: {todo.obstacle_reason}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </section>
       </div>
