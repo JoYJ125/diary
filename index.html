@@ -338,6 +338,9 @@
             }
         }
 
+        window.toggleStatus = toggleStatus;
+        window.deleteTodo = deleteTodo;
+
         // 요약 화면 업데이트
         function updateSummary(total, completed) {
             document.getElementById('totalPlans').innerText = total;
