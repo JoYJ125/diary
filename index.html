@@ -291,6 +291,7 @@
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let currentUser = null;
+        let isSigningUp = false;
 
         // ==========================================
         // 2. 인증 관리 (Login / SignUp / Logout)
@@ -301,25 +302,33 @@
         }
 
         async function handleSignUp() {
+            if (isSigningUp) return;
+
             const email = document.getElementById('authEmail').value.trim();
             const password = document.getElementById('authPassword').value;
 
             if (!email || !password) return alert("이메일과 비밀번호를 입력해주세요.");
             if (password.length < 6) return alert("비밀번호는 6자 이상 입력해주세요.");
 
-            const { data, error } = await supabase.auth.signUp({ email, password });
-            if (error) {
-                alert("회원가입 실패: " + error.message);
-                return;
-            }
+            isSigningUp = true;
+            try {
+                const { data, error } = await supabase.auth.signUp({ email, password });
+                if (error) {
+                    console.error(error);
+                    alert("회원가입 실패: " + error.message);
+                    return;
+                }
 
-            if (data.user && data.user.identities?.length === 0) {
-                alert("이미 가입된 이메일입니다. 로그인해 주세요.");
-            } else if (data.session) {
-                updateUI(data.user);
-                alert("회원가입이 완료되었습니다.");
-            } else {
-                alert("가입 완료! 이메일 인증 링크를 확인한 뒤 로그인해주세요.");
+                if (data.user && data.user.identities?.length === 0) {
+                    alert("이미 가입된 이메일입니다. 로그인해 주세요.");
+                } else if (data.session) {
+                    updateUI(data.user);
+                    alert("회원가입이 완료되었습니다.");
+                } else {
+                    alert("가입 완료! 이메일 인증 링크를 확인한 뒤 로그인해주세요.");
+                }
+            } finally {
+                isSigningUp = false;
             }
         }
 
